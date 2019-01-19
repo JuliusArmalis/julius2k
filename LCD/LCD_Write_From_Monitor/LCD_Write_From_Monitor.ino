@@ -19,7 +19,10 @@
 
 #include <Wire.h>
 
-int Button = 2;
+#define Button 2
+const uint8_t m = 16;  //  LCD number of collumns
+const uint8_t n = 2;   //  LCD number of rows
+
 int buttonPushCount = 0;
 int buttonState = 0;
 int lastButtonState = 0;
@@ -27,32 +30,34 @@ int lastButtonState = 0;
 //I2C pins declaration
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE); 
 
-String line1 = "";
-String line2 = "";
+String lines[n];
+uint8_t maxLength = 0;
+uint8_t maxI = 0;
 
 unsigned long  prevTime = 0;
 
 void setup() 
 {
 
-  lcd.begin(16,2);//Defining 16 columns and 2 rows of lcd display
+  lcd.begin(m, n);
   pinMode(Button, INPUT);
   Serial.begin(9600);
-  //attachInterrupt(0, ButtonClear, CHANGE);
-  //Timer1.initialize(100000);
-  //Timer1.attachInterrupt(ButtonPush);
+  attachInterrupt(digitalPinToInterrupt(Button), ButtonClear, FALLING);
+  Nullify();
 }
 
 void loop() 
 {  
   unsigned long currTime; 
-  ButtonClear();
+  
+  if(maxLength == 0)
+    lcd.clear();
   
   ReadMonitor();
-  
-  if((line1.length() > 16 || line2.length() > 16) && (currTime = millis()) - prevTime >= 2000)
-  {    
-    Scroll(currTime);
+
+  if(maxLength > m && (currTime = millis()) - prevTime >= 2000)
+  {  
+    Scroll();
     prevTime = millis();
   }
   
@@ -61,77 +66,80 @@ void loop()
 void ReadMonitor()
 {
   if(Serial.available())
-  {   
-    line2 = line1;
-    line1 = Serial.readString();
-    line1 = line1.substring(0, line1.length() - 1);
+  {
+    for(int i = n - 1; i > 0; i--)  //  Pushes all lines down by one
+        lines[i] = lines[i-1];
+        
+    lines[0] = Serial.readString();
+    lines[0] = lines[0].substring(0, lines[0].length() - 1);    
 
     lcd.home();
     
     lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print(line1);
-    lcd.setCursor(0,1);
-    lcd.print(line2);
+
+    for(int i = 0; i < n; i++)  //  Prints all lines
+    {
+      lcd.setCursor(0,i);
+      lcd.print(lines[i]);
+    }
 
     prevTime = millis();  //The time is calculated from this point on
+
+    findLongest();
+  }
+}
+
+void findLongest()
+{
+  maxLength = 0;
+  
+  for(int i = 0; i < n; i++)
+  {
+    if(lines[i].length() > maxLength)
+    {
+      maxLength = lines[i].length();
+      maxI = i;      
+    }
   }
 }
 
 void ButtonClear()
 {
-  buttonState = digitalRead(Button);
-  
-  if(buttonState != lastButtonState)
-    {
-      buttonPushCount++;
-      line1 = "";
-      line2 = "";
-      lcd.clear();
-      delay(100);   
-    }
-        
-    lastButtonState = buttonState;  
+  static unsigned long prevTime = 0;
+  unsigned long interrTime = millis();
+  if(interrTime - prevTime > 150)
+  {
+    Nullify();
+    maxLength = 0;
+    maxI = 0;
+  }
+
+  prevTime = interrTime;  
 }
 
-void Scroll(unsigned long Time)
+void Nullify()  //  Nullifies all lines in an array
+{
+  for(int i = 0; i < n; i++)
+      lines[i] = "";
+}
+
+void Scroll()
 {
   unsigned long currTime;
-
-  if(line1.length() >= line2.length())
-   {
-    for(int i = 0; i < int(line1.length() - 16); i++)
-    {
-      lcd.scrollDisplayLeft();
-      Time = millis();
-      while((currTime = millis()) - Time < 200)
-      {
-        ButtonClear();
-        ReadMonitor();
-      }
-    }   
-   }
-
-  else
+  unsigned long Time;
+  for(int i = 0; i < int(lines[maxI].length() - m); i++)
   {
-    for(int i = 0; i < int(line2.length() - 16); i++)
-      {
-        lcd.scrollDisplayLeft();
-        Time = millis();
-        while((currTime = millis()) - Time < 200)
-        {
-          ButtonClear();
-          ReadMonitor();
-        }
-      }   
+    lcd.scrollDisplayLeft();
+    Time = millis();
+    while((currTime = millis()) - Time < 200)
+    {
+    }
   }
-  
+
   Time = millis();
   while((currTime = millis()) - Time < 1500)
   {
-    ButtonClear();
-    ReadMonitor();
-  }
+  } 
   
   lcd.home(); 
   
