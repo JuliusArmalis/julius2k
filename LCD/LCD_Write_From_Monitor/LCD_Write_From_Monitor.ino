@@ -1,10 +1,7 @@
 /*
  * Reads text from serial monitor and prints it to lcd
- * Currently I'm using 16*2 lcd, but later I might make the code more universal
- * I've attached a button to clear the screen at any time, but
- * I haven't found a way to make it as interrupt signal. Therefore,
- * right now I'm just using a button clear and read monitor 
- * functions in every loop
+ * Currently I'm using 16*2 lcd, but the code is universal for all LCDs
+ * I've attached a button to clear the screen at any time.
  */
 
 #include <TimerOne.h>
