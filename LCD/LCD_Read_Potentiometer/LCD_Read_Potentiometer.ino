@@ -109,7 +109,7 @@ void ConfirmButton()
   unsigned long interrTime = millis();
   if(interrTime - prevTime > 150)
   {
-    if(c + 1 > m - 1 && r > n - 1)
+    if(c + 1 > m - 1 && r < n - 1)
     {
       c = 0;
       r++;
